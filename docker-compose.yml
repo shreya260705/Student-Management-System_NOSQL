@@ -1,0 +1,89 @@
+services:
+  # ============================================================================
+  # 1. MongoDB Service (NoSQL Database Layer)
+  # ============================================================================
+  mongodb:
+    image: mongo:7.0
+    container_name: sms_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: student_management
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - sms_network
+    # Internal port exposed only within the Docker network to avoid host port collisions
+    expose:
+      - "27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================================
+  # 2. Flask Backend Service (PyMongo + REST API)
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sms_backend
+    restart: unless-stopped
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/
+      - DB_NAME=student_management
+      - TEST_DB_NAME=student_management_test
+      - HOST=0.0.0.0
+      - PORT=5000
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "5000:5000"
+    networks:
+      - sms_network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ============================================================================
+  # 3. React Frontend Service (Nginx Reverse Proxy & Static Asset Server)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sms_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks:
+      - sms_network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# ==============================================================================
+# Persistent Named Volumes & Custom Bridge Network
+# ==============================================================================
+volumes:
+  mongo_data:
+    driver: local
+    name: sms_mongo_data
+
+networks:
+  sms_network:
+    driver: bridge
+    name: sms_network

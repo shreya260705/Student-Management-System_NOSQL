@@ -1,0 +1,22 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+.coverage
+htmlcov/
+
+# Local environment and secrets
+.env
+.env.local
+
+# Git and OS
+.git/
+.gitignore
+.DS_Store
+Thumbs.db
