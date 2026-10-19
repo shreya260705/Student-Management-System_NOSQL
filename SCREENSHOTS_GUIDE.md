@@ -7,7 +7,7 @@
 **Roll Number**: 07   
 **Department**: Computer Science & Engineering  
 **Institution**: Lovely Professional University  
-**GitHub Repository**: [https://github.com/Shreya260705/Student-Management-System_NOSQL](https://github.com/Shreya260705/Student-Management-System_NOSQL)  
+**GitHub Repository**: [https://github.com/shreya260705/Student-Management-System_NOSQL](https://github.com/shreya260705/Student-Management-System_NOSQL)  
 
 ---
 

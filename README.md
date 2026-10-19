@@ -7,7 +7,7 @@
 **Department**: Computer Science & Engineering  
 **Institution**: Lovely Professional University  
 **Evaluation**: 30 Marks Total (Implementation: 15 Marks, Report: 5 Marks, Viva: 10 Marks)  
-**Repository**: [https://github.com/Shreya260705/Student-Management-System_NOSQL](https://github.com/Shreya260705/Student-Management-System_NOSQL)  
+**Repository**: [https://github.com/shreya260705/Student-Management-System_NOSQL](https://github.com/shreya260705/Student-Management-System_NOSQL)  
 
 A full-stack, production-grade, and beginner-friendly Student Management System built using **MongoDB**, **PyMongo**, **Python (Flask)**, and **React (Vite + Tailwind CSS + Recharts)**.
 

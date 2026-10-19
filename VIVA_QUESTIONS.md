@@ -8,7 +8,7 @@
 **Section**: K3P23MP 
 **Department**: Computer Science & Engineering  
 **Institution**: Lovely Professional University  
-**GitHub Repository**: [https://github.com/ramkumar-lpu/Student-Management-System_NOSQL](https://github.com/ramkumar-lpu/Student-Management-System_NOSQL)  
+**GitHub Repository**: [https://github.com/shreya260705/Student-Management-System_NOSQL](https://github.com/shreya260705/Student-Management-System_NOSQL)  
 
 ---
 

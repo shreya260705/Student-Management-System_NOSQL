@@ -2,7 +2,7 @@
 ## Project: Student Management System (SMS)
 ### Course: Intelligent NoSQL Databases (CSE494)
 **Author**: SHREYA TRIPATHI (Reg No: 12308254, Roll No: 07, Section: K3P23MP)  
-**Repository**: [https://github.com/Shreya260705/Student-Management-System_NOSQL](https://github.com/Shreya260705/Student-Management-System_NOSQL)
+**Repository**: [https://github.com/shreya260705/Student-Management-System_NOSQL](https://github.com/shreya260705/Student-Management-System_NOSQL)
 
 ---
 
