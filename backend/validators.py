@@ -1,5 +1,5 @@
 """
-validators.py - Input validation logic for student data.
+validators.py - Input validation logic for student data and academic modules.
 Validates fields before hitting MongoDB to return clear, beginner-friendly errors.
 """
 
@@ -102,11 +102,35 @@ def validate_student_data(data, is_update=False):
                     if score_num < 0 or score_num > 100:
                         errors[f"marks.{subject}"] = f"{subject} marks must be between 0 and 100."
                     else:
-                        # Store as integer if whole number, else rounded float
                         cleaned_marks[subject] = int(score_num) if score_num.is_integer() else round(score_num, 2)
                 except (ValueError, TypeError):
                     errors[f"marks.{subject}"] = f"{subject} marks must be a valid number between 0 and 100."
+
+            # Preserve any additional optional subjects if passed
+            for extra_subj, extra_val in marks.items():
+                if extra_subj not in ["DBMS", "DSA", "Python"]:
+                    try:
+                        score_num = float(extra_val)
+                        if 0 <= score_num <= 100:
+                            cleaned_marks[extra_subj] = int(score_num) if score_num.is_integer() else round(score_num, 2)
+                    except (ValueError, TypeError):
+                        pass
+
             cleaned["marks"] = cleaned_marks
+
+    # 7. Optional Metadata (Phone, Status, DOB, Address)
+    if "phone" in data and data.get("phone") is not None:
+        cleaned["phone"] = str(data["phone"]).strip()
+    if "status" in data and data.get("status") is not None:
+        val = str(data["status"]).strip().capitalize()
+        cleaned["status"] = val if val in ["Active", "Inactive", "Archived"] else "Active"
+    elif not is_update and "status" not in cleaned:
+        cleaned["status"] = "Active"
+
+    if "dob" in data and data.get("dob") is not None:
+        cleaned["dob"] = str(data["dob"]).strip()
+    if "address" in data and data.get("address") is not None:
+        cleaned["address"] = str(data["address"]).strip()
 
     if errors:
         return False, errors

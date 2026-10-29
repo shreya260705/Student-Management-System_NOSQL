@@ -5,15 +5,46 @@ import Toast from './components/Toast';
 import StudentDetailsModal from './components/StudentDetailsModal';
 import StudentFormModal from './components/StudentFormModal';
 import DeleteConfirmModal from './components/DeleteConfirmModal';
+import AuthModal from './components/AuthModal';
+import CsvImportModal from './components/CsvImportModal';
 
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
+import Teachers from './pages/Teachers';
+import Academic from './pages/Academic';
+import Attendance from './pages/Attendance';
+import Exams from './pages/Exams';
+import Timetable from './pages/Timetable';
+import Fees from './pages/Fees';
+import Announcements from './pages/Announcements';
 import Analytics from './pages/Analytics';
+import Reports from './pages/Reports';
+import TeacherPortal from './pages/TeacherPortal';
+import StudentPortal from './pages/StudentPortal';
 
-import { apiService } from './services/api';
+import {
+  apiService,
+  getStoredUser,
+  setStoredUser,
+  setStoredToken,
+  getStoredToken,
+} from './services/api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Authentication & View State
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+  const [isLandingView, setIsLandingView] = useState(() => !getStoredUser());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
+
+  // Active Navigation Tab
+  const [activeTab, setActiveTab] = useState(() => {
+    const user = getStoredUser();
+    if (user?.role === 'teacher') return 'teacher_portal';
+    if (user?.role === 'student') return 'student_portal';
+    return 'dashboard';
+  });
 
   // Health and connection state
   const [dbStatus, setDbStatus] = useState({
@@ -46,6 +77,7 @@ export default function App() {
     search: '',
     department: '',
     semester: '',
+    status: '',
     sort_by: 'created_at',
     sort_order: 'desc',
   });
@@ -62,9 +94,9 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const showToast = (message, type = 'success') => {
+  const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
-  };
+  }, []);
 
   // 1. Fetch Health
   const checkHealth = useCallback(async () => {
@@ -95,30 +127,47 @@ export default function App() {
     } finally {
       setLoadingStats(false);
     }
-  }, []);
+  }, [showToast]);
 
   // 3. Fetch Students List
-  const loadStudents = useCallback(async (currentFilters = filters) => {
-    setLoadingStudents(true);
-    try {
-      const data = await apiService.getStudents(currentFilters);
-      setStudents(data.students || []);
-      setPagination(data.pagination || { total: 0, page: 1, limit: 10, total_pages: 1 });
-    } catch (err) {
-      showToast(err.message || 'Failed to fetch student records', 'error');
-    } finally {
-      setLoadingStudents(false);
-    }
-  }, [filters]);
+  const loadStudents = useCallback(
+    async (currentFilters = filters) => {
+      setLoadingStudents(true);
+      try {
+        const data = await apiService.getStudents(currentFilters);
+        setStudents(data.students || []);
+        setPagination(
+          data.pagination || { total: 0, page: 1, limit: 10, total_pages: 1 }
+        );
+      } catch (err) {
+        showToast(err.message || 'Failed to fetch student records', 'error');
+      } finally {
+        setLoadingStudents(false);
+      }
+    },
+    [filters, showToast]
+  );
 
   // Initial load
   useEffect(() => {
     checkHealth();
     loadDashboardStats();
     loadStudents();
+
+    if (getStoredToken()) {
+      apiService
+        .getMe()
+        .then((res) => {
+          if (res?.user) {
+            setCurrentUser(res.user);
+            setStoredUser(res.user);
+          }
+        })
+        .catch(() => {});
+    }
   }, [checkHealth, loadDashboardStats, loadStudents]);
 
-  // Global Refresh Handler
+  // Refresh Handler
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await checkHealth();
@@ -127,14 +176,13 @@ export default function App() {
     showToast('Data refreshed successfully from MongoDB', 'success');
   };
 
-  // Filter change handler
+  // Filter handlers
   const handleFilterChange = (newFilters) => {
     const updated = { ...filters, ...newFilters };
     setFilters(updated);
     loadStudents(updated);
   };
 
-  // Reset filters handler
   const handleResetFilters = () => {
     const defaultFilters = {
       page: 1,
@@ -142,6 +190,7 @@ export default function App() {
       search: '',
       department: '',
       semester: '',
+      status: '',
       sort_by: 'created_at',
       sort_order: 'desc',
     };
@@ -149,29 +198,24 @@ export default function App() {
     loadStudents(defaultFilters);
   };
 
-  // Page change handler
   const handlePageChange = (newPage) => {
     handleFilterChange({ page: newPage });
   };
 
-  // Create or Update Student
+  // Create / Update Student
   const handleFormSubmit = async (payload, studentId = null) => {
     setIsSubmitting(true);
     try {
       if (studentId) {
-        // Update student
         const res = await apiService.updateStudent(studentId, payload);
         showToast(res.message || 'Student updated successfully!', 'success');
       } else {
-        // Create student
         const res = await apiService.createStudent(payload);
         showToast(res.message || 'Student enrolled successfully!', 'success');
       }
 
       setIsFormModalOpen(false);
       setStudentToEdit(null);
-
-      // Refresh both list and dashboard
       await Promise.all([loadStudents(filters), loadDashboardStats()]);
     } finally {
       setIsSubmitting(false);
@@ -185,8 +229,6 @@ export default function App() {
       const res = await apiService.deleteStudent(id);
       showToast(res.message || 'Student deleted successfully', 'success');
       setStudentToDelete(null);
-
-      // Refresh both list and dashboard
       await Promise.all([loadStudents(filters), loadDashboardStats()]);
     } catch (err) {
       showToast(err.message || 'Failed to delete student', 'error');
@@ -195,16 +237,80 @@ export default function App() {
     }
   };
 
+  // Archive Student
+  const handleArchiveStudent = async (student) => {
+    try {
+      const res = await apiService.archiveStudent(student.id || student._id);
+      showToast(res.message, 'success');
+      loadStudents(filters);
+    } catch (err) {
+      showToast(err.message || 'Failed to archive student', 'error');
+    }
+  };
+
+  // Auth Success Callback
+  const handleAuthSuccess = (user) => {
+    setCurrentUser(user);
+    setIsLandingView(false);
+    showToast(`Welcome back, ${user.name}!`, 'success');
+    if (user.role === 'teacher') {
+      setActiveTab('teacher_portal');
+    } else if (user.role === 'student') {
+      setActiveTab('student_portal');
+    } else {
+      setActiveTab('dashboard');
+    }
+  };
+
+  // Role Switcher - Opens authentication modal so user must sign in with actual credentials
+  const handleSwitchRole = () => {
+    setIsAuthModalOpen(true);
+  };
+
+  // Logout Handler
+  const handleLogout = () => {
+    setStoredUser(null);
+    setStoredToken(null);
+    setCurrentUser(null);
+    setIsLandingView(true);
+    showToast('You have been logged out.', 'info');
+  };
+
+  // Render Public Landing Page
+  if (isLandingView) {
+    return (
+      <>
+        <LandingPage
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onExploreDemo={() => setIsAuthModalOpen(true)}
+        />
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onAuthSuccess={handleAuthSuccess}
+        />
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ message: '', type: 'success' })}
+        />
+      </>
+    );
+  }
+
+  const userRole = currentUser?.role || 'admin';
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
       {/* Left Sidebar */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenAddStudent={() => {
-          setStudentToEdit(null);
-          setIsFormModalOpen(true);
-        }}
+        userRole={userRole}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onSwitchRole={handleSwitchRole}
+        onViewLanding={() => setIsLandingView(true)}
       />
 
       {/* Main Content Area */}
@@ -215,6 +321,9 @@ export default function App() {
           dbStatus={dbStatus}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
+          userRole={userRole}
+          currentUser={currentUser}
+          onViewLanding={() => setIsLandingView(true)}
           onOpenAddStudent={() => {
             setStudentToEdit(null);
             setIsFormModalOpen(true);
@@ -222,8 +331,9 @@ export default function App() {
         />
 
         {/* Scrollable Main Views */}
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-6 sm:p-8">
           <div className="max-w-7xl mx-auto">
+            {/* Admin Dashboard */}
             {activeTab === 'dashboard' && (
               <Dashboard
                 stats={stats}
@@ -233,6 +343,7 @@ export default function App() {
               />
             )}
 
+            {/* Students Directory */}
             {activeTab === 'students' && (
               <Students
                 students={students}
@@ -248,11 +359,90 @@ export default function App() {
                   setIsFormModalOpen(true);
                 }}
                 onDeleteStudent={(student) => setStudentToDelete(student)}
+                onArchiveStudent={handleArchiveStudent}
+                onOpenImportCsv={() => setIsCsvImportOpen(true)}
               />
             )}
 
+            {/* Faculty & Teachers */}
+            {activeTab === 'teachers' && (
+              <Teachers showToast={showToast} />
+            )}
+
+            {/* Academic Courses & Classes */}
+            {activeTab === 'academic' && (
+              <Academic showToast={showToast} />
+            )}
+
+            {/* Attendance Management - Excluded from Admin Portal */}
+            {activeTab === 'attendance' && userRole !== 'admin' && (
+              <Attendance
+                showToast={showToast}
+                userRole={userRole}
+                currentUser={currentUser}
+                allowedSubjects={
+                  currentUser?.assigned_subjects ||
+                  currentUser?.teacher_profile?.assigned_subjects
+                }
+              />
+            )}
+
+            {/* Examinations & Report Cards */}
+            {activeTab === 'exams' && (
+              <Exams
+                showToast={showToast}
+                userRole={userRole}
+                currentUser={currentUser}
+              />
+            )}
+
+            {/* Class Timetable */}
+            {activeTab === 'timetable' && (
+              <Timetable
+                showToast={showToast}
+                userRole={userRole}
+                currentUser={currentUser}
+              />
+            )}
+
+            {/* Tuition Fees & Financials */}
+            {activeTab === 'fees' && (
+              <Fees
+                showToast={showToast}
+                userRole={userRole}
+                currentUser={currentUser}
+              />
+            )}
+
+            {/* Announcements Notice Board */}
+            {activeTab === 'announcements' && (
+              <Announcements showToast={showToast} userRole={userRole} />
+            )}
+
+            {/* The 5 MongoDB Aggregation Pipelines (CSE494) */}
             {activeTab === 'analytics' && (
               <Analytics onError={(msg) => showToast(msg, 'error')} />
+            )}
+
+            {/* Reports & Regulatory Audit */}
+            {activeTab === 'reports' && (
+              <Reports showToast={showToast} />
+            )}
+
+            {/* Dedicated Teacher Portal */}
+            {activeTab === 'teacher_portal' && (
+              <TeacherPortal
+                currentUser={currentUser}
+                showToast={showToast}
+              />
+            )}
+
+            {/* Dedicated Student Portal */}
+            {activeTab === 'student_portal' && (
+              <StudentPortal
+                currentUser={currentUser}
+                showToast={showToast}
+              />
             )}
           </div>
         </main>
@@ -286,6 +476,22 @@ export default function App() {
         onClose={() => setStudentToDelete(null)}
         onConfirm={handleConfirmDelete}
         isDeleting={isDeleting}
+      />
+
+      <CsvImportModal
+        isOpen={isCsvImportOpen}
+        onClose={() => setIsCsvImportOpen(false)}
+        onImportSuccess={() => {
+          loadStudents(filters);
+          loadDashboardStats();
+          showToast('CSV import completed successfully!', 'success');
+        }}
+      />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
       />
 
       {/* Toast Notification */}

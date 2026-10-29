@@ -12,7 +12,8 @@ from database import init_database, get_db
 from routes import api_bp
 
 # Load environment configuration
-load_dotenv()
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(dotenv_path)
 
 
 def create_app(test_config=None):

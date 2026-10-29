@@ -8,10 +8,18 @@ __pycache__/
 .coverage
 htmlcov/
 
-# Environment variables
-backend/.env
+# Environment variables and secrets
 .env
-.env.local
+.env.*
+*.env
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+!*.example
 
 # Node / Frontend
 frontend/node_modules/
